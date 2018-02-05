@@ -1,0 +1,341 @@
+---
+API: 2
+OpenSesame: 3.1.4
+Platform: nt
+---
+set width 1920
+set uniform_coordinates no
+set title "EyeTribe Reading Experiment"
+set subject_parity even
+set subject_nr 0
+set start experiment
+set sound_sample_size -16
+set sound_freq 48000
+set sound_channels 2
+set sound_buf_size 1024
+set sampler_backend legacy
+set round_decimals 2
+set mouse_backend legacy
+set keyboard_backend legacy
+set height 1080
+set fullscreen no
+set form_clicks no
+set foreground black
+set font_underline no
+set font_size 18
+set font_italic no
+set font_family mono
+set font_bold no
+set experiment_path "C:\\Users\\Sebastian Korinth\\Desktop"
+set disable_garbage_collection yes
+set description "eyeR example"
+set coordinates relative
+set compensation 0
+set color_backend legacy
+set clock_backend legacy
+set canvas_backend legacy
+set bidi yes
+set background "#ffffff"
+
+define sequence block_sequence
+	set flush_keyboard yes
+	set description "A sequence containing a single block of trials followed by feedback to the participant"
+	run trial_loop always
+
+define loop blockloop
+	set source_file ""
+	set source table
+	set skip 0
+	set repeat 1
+	set order random
+	set offset no
+	set item block_sequence
+	set description "A loop containing one or more practice blocks"
+	set cycles 1
+	set continuous no
+	set column_order practice
+	set break_if_on_first yes
+	set break_if never
+	setcycle 0 practice no
+	run block_sequence
+
+define sketchpad end_of_experiment
+	set start_response_interval no
+	set duration keypress
+	set description "A sketchpad notifying the participant that the experiment is finished"
+	draw textline center=1 color="#000000" font_bold=no font_family=mono font_italic=no font_size=18 html=yes show_if=always text="Thank you!<br /><br />That's all.<br /><br />Press any button to terminate the experiment." x=32 y=0 z_index=0
+
+define sequence experiment
+	set flush_keyboard yes
+	set description "The main sequence of the experiment"
+	run instructions always
+	run pygaze_init always
+	run blockloop always
+	run end_of_experiment always
+
+define sketchpad instructions
+	set start_response_interval no
+	set duration keypress
+	set description "A sketchpad containing the instructions for the participant"
+	draw textline center=0 color=black font_bold=no font_family=mono font_italic=no font_size=18 html=yes show_if=always text="Dear participant,<br> <br><br />During the following experiment we will record your eye movements while you are reading ten simple sentences. Before we can start <br>we will have to calibrate the eye tracker. For this purpose you will have to follow the little point that will appear at various positions <br>of the screen. Please direct your gaze at the point until it disappears. It is not important that you do this quickly but it is crucial that<br>you do this as accurately as possible. <br><br><br />1.) Before each trial a little dot will appear at the left side of the screen. Please look at it and press the space bar as soon as you <br>are ready; the sentence will appear.  <br><br><br />2.) Read the sentence at your usual reading speed and fixate the dot at the right side of the screen. Press the space bar again to <br>indicate that you have finished reading.<br><br><br />3.) A very simple question concerning the content of the sentence will appear. <br>For option a) press the arrow key left; for option b) press the arrow key right.<br><br><br /><br />Press the space bar to start the experiment.<br />" x=-768 y=-416 z_index=0
+
+define keyboard_response key_finish_reading
+	set timeout infinite
+	set flush yes
+	set duration keypress
+	set description "Collects keyboard responses"
+	set allowed_responses space
+
+define keyboard_response key_response
+	set timeout infinite
+	set flush no
+	set duration keypress
+	set description "Sammelt Tastaturantworten"
+	set correct_response correct_response
+	set allowed_responses "left;right"
+
+define logger logger
+	set description "Logs experimental data"
+	set auto_log yes
+
+define pygaze_drift_correct pygaze_drift_correct
+	set ypos "[driftY]"
+	set xpos "[driftX]"
+	set target_style default
+	set target_color "[foreground]"
+	set fixation_triggered no
+	set draw_target yes
+	set description "Perform eye-tracker drift correction"
+
+define pygaze_init pygaze_init
+	set tracker_type EyeTribe
+	set smi_send_port 4444
+	set smi_recv_port 5555
+	set smi_ip "127.0.0.1"
+	set sacc_vel_thr 35
+	set sacc_acc_thr 9500
+	set eyelink_pupil_size_mode area
+	set eyelink_force_drift_correct yes
+	set description "Initialize and calibrate eye tracker"
+	set calibrate yes
+	set calbeep yes
+	set _logfile automatic
+
+define pygaze_log pygaze_log
+	set throttle 2
+	set msg ""
+	set description "Writes information to the eye-tracker logfile"
+	set auto_log yes
+
+define pygaze_start_recording pygaze_start_recording
+	set status_msg "start_trial [count_trial_sequence]"
+	set description "Puts the eye tracker into recording mode"
+
+define pygaze_stop_recording pygaze_stop_recording
+	set status_msg stop_trial
+	set description "Stops recording of eye tracking data"
+
+define sketchpad question
+	set duration 0
+	set description comprehension_gist
+	draw textline center=0 color=black font_bold=no font_family=mono font_italic=no font_size=18 html=no show_if=always text="[question]" x=-544.0 y=-160.0 z_index=0
+	draw textline center=0 color=black font_bold=no font_family=mono font_italic=no font_size=18 html=no show_if=always text="[option_1]" x=-416.0 y=-96.0 z_index=0
+	draw textline center=0 color=black font_bold=no font_family=mono font_italic=no font_size=18 html=no show_if=always text="[option_2]" x=-416.0 y=-32.0 z_index=0
+
+define inline_script save_screen
+	set description "Executes Python code"
+	___run__
+	canvas = self.offline_canvas()
+	
+	if var.task == 0:
+		canvas.text(var.stimulus, center=False, x=100 , y=500, max_width=1500)
+		canvas.fixdot(1800,500)
+	elif var.task==1:
+		path = exp.get_file(var.stimulus+".png")
+		canvas.image(path)
+		canvas.fixdot(1500,1000)
+	canvas.show()
+	#self.sleep(1000)
+	save_as_file(canvas, "images/"+str(var.count_trial_sequence)+"_"+str(var.stim_id)+".png")
+	__end__
+	___prepare__
+	def save_as_file(canvas, filename, buffer='front'):
+		""" Save the contents of the current screenbuffer to an image file.
+	
+		Parameters
+		----------
+		canvas : openexp.Canvas
+			The canvas object to save the image from
+	
+		filename : string
+			The location and filenam to save the image to. If an absolute path is 
+			provided, the file will be saved there. If a relative path is provided, 
+			the file will be saved to that folder relative to the location of the 
+			experiment file
+	
+		buffer : string, default 'front'
+			Only relevant when using the psychopy backend. Indicates whether the 
+			front buffer or back buffer should be saved, so this value should be 
+			'front' or 'back'
+	
+		Returns
+		-------
+		string : The full path to the file that has just been saved
+	
+		Raises
+		------
+		libopensesame.exceptions.osexception if an incorrect file format or buffer 
+		value have been provided    
+		"""
+		import os
+		from libopensesame.exceptions import osexception
+	
+		# Check if supplied filename has a valid image extension
+		if not os.path.splitext(filename)[1] in ['.jpg', '.jpeg', '.png', '.bmp' or '.tga']:
+			raise osexception("The filename does not have a valid image extension. Use .jpg, .jpeg, .png, .bmp or .tga")
+	
+		if not buffer in ['front','back']:
+			raise osexception("Invalid buffer value; the only options are 'front' or 'back'.")
+	
+		# Check if image file path is absolute, if not, find relative path to current experiment file
+		if not os.path.isabs(filename):
+			filename = os.path.abspath(os.path.join(self.experiment.experiment_path, filename))
+	
+		# Create any subfolders if necessary
+		file_dir = os.path.dirname(filename)
+		if not os.path.isdir(file_dir):
+			os.makedirs(file_dir)
+	
+		# Backend specific saving of canvas to image file
+		if self.experiment.get("canvas_backend") == "legacy":
+			import pygame
+			pygame.image.save(canvas.surface, filename) 
+		elif self.experiment.get("canvas_backend") == "xpyriment":  
+			canvas._canvas.save(filename)
+		elif self.experiment.get("canvas_backend") == "psycho":
+			win.getMovieFrame(buffer)
+			win.saveMovieFrames(filename)
+	
+		# Return the abspath of the saved file (to easily reference it later)
+		return filename
+	__end__
+
+define loop trial_loop
+	set source_file ""
+	set source table
+	set skip 0
+	set repeat 1
+	set order random
+	set offset no
+	set item trial_sequence
+	set description "A single block of trials"
+	set cycles 10
+	set continuous no
+	set column_order "task;stimulus;stim_id;driftX;driftY"
+	set break_if_on_first yes
+	set break_if never
+	setcycle 0 stimulus "Tom’s father used to go fishing with his kids until they became vegetarian."
+	setcycle 0 task 0.0
+	setcycle 0 driftY 500.0
+	setcycle 0 driftX 100.0
+	setcycle 0 stim_id 1
+	setcycle 0 question "The kids went: "
+	setcycle 0 option_1 "a) fishing."
+	setcycle 0 option_2 "b) hiking."
+	setcycle 0 correct_response left
+	setcycle 1 stimulus "The strange old lady who usually feeds the cats suddenly disappeared."
+	setcycle 1 task 0.0
+	setcycle 1 driftY 500.0
+	setcycle 1 driftX 100.0
+	setcycle 1 stim_id 2
+	setcycle 1 question "The old lady feeds:"
+	setcycle 1 option_1 "a) pigeons."
+	setcycle 1 option_2 "b) cats."
+	setcycle 1 correct_response right
+	setcycle 2 stimulus "Several penguins escaped their cages in the zoo and went for a walk in the park."
+	setcycle 2 task 0.0
+	setcycle 2 driftY 500.0
+	setcycle 2 driftX 100.0
+	setcycle 2 stim_id 3
+	setcycle 2 question "The penguins went to:"
+	setcycle 2 option_1 "a) a park."
+	setcycle 2 option_2 "b) a lake."
+	setcycle 2 correct_response left
+	setcycle 3 stimulus "Even as Joe’s drug addiction became obvious he denied having a problem."
+	setcycle 3 task 0.0
+	setcycle 3 driftY 500.0
+	setcycle 3 driftX 100.0
+	setcycle 3 stim_id 4
+	setcycle 3 question "Did Joe go to rehab?"
+	setcycle 3 option_1 "a) Yes."
+	setcycle 3 option_2 "b) No."
+	setcycle 3 correct_response right
+	setcycle 4 stimulus "Although I really hated mathematics in school I became a decent engineer. "
+	setcycle 4 task 0.0
+	setcycle 4 driftY 500.0
+	setcycle 4 driftX 100.0
+	setcycle 4 stim_id 5
+	setcycle 4 question "I hated:"
+	setcycle 4 option_1 "a) math."
+	setcycle 4 option_2 "b) physics."
+	setcycle 4 correct_response left
+	setcycle 5 stimulus "After the terror attack heavily armed soldiers patrolled the streets of Paris."
+	setcycle 5 task 0.0
+	setcycle 5 driftY 500.0
+	setcycle 5 driftX 100.0
+	setcycle 5 stim_id 6
+	setcycle 5 question "Who was heavily armed?"
+	setcycle 5 option_1 "a) Policemen."
+	setcycle 5 option_2 "b) Soldiers."
+	setcycle 5 correct_response right
+	setcycle 6 stimulus "Some say that the internet was initially created for sharing pictures of cute cats."
+	setcycle 6 task 0.0
+	setcycle 6 driftY 500.0
+	setcycle 6 driftX 100.0
+	setcycle 6 stim_id 7
+	setcycle 6 question "What is your opinion? "
+	setcycle 6 option_1 "a) No way, I am a dog person."
+	setcycle 6 option_2 "b) True fact, cats rule the world. "
+	setcycle 6 correct_response right
+	setcycle 7 stimulus "Mark and Shelley found an apartment in one of the fancy neighborhoods of London."
+	setcycle 7 task 0.0
+	setcycle 7 driftY 500.0
+	setcycle 7 driftX 100.0
+	setcycle 7 stim_id 8
+	setcycle 7 question "The neighborhood is:"
+	setcycle 7 option_1 "a) shabby."
+	setcycle 7 option_2 "b) fancy."
+	setcycle 7 correct_response right
+	setcycle 8 stimulus "Especially for young people long-term unemployment can damage a person’s self-esteem."
+	setcycle 8 task 0.0
+	setcycle 8 driftY 500.0
+	setcycle 8 driftX 100.0
+	setcycle 8 stim_id 9
+	setcycle 8 question "Young people’s self-esteem is:"
+	setcycle 8 option_1 "a) easily damaged."
+	setcycle 8 option_2 "b) indestructible."
+	setcycle 8 correct_response left
+	setcycle 9 stimulus "They observed that fathers of daughters show a tendency for protective behavior."
+	setcycle 9 task 0.0
+	setcycle 9 driftY 500.0
+	setcycle 9 driftX 100.0
+	setcycle 9 stim_id 10
+	setcycle 9 question "Who shows protective behavior?"
+	setcycle 9 option_1 "a) Fathers."
+	setcycle 9 option_2 "b) Mothers."
+	setcycle 9 correct_response left
+	run trial_sequence
+
+define sequence trial_sequence
+	set flush_keyboard yes
+	set description "A single trial"
+	run pygaze_drift_correct always
+	run pygaze_start_recording always
+	run save_screen always
+	run key_finish_reading always
+	run question always
+	run key_response always
+	run pygaze_stop_recording always
+	run pygaze_log always
+	run logger always
+
